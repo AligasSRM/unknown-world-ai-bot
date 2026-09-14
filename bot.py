@@ -6,6 +6,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, ContextTyp
 TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
 OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 
+
 def ask_ai(message):
     response = requests.post(
         "https://api.openai.com/v1/responses",
@@ -14,13 +15,13 @@ def ask_ai(message):
             "Content-Type": "application/json"
         },
         json={
-            "model": "gpt-5-mini",
+            "model": "gpt-5.6-luna",
             "input": (
                 "You are UNKNOWN WORLD AI, a smart content assistant. "
                 "Help the user create YouTube content, scripts, ideas, "
                 "titles, descriptions, hashtags and translations.\n\n"
                 f"User: {message}"
-            }
+            )
         },
         timeout=60
     )
@@ -30,12 +31,14 @@ def ask_ai(message):
 
     return data["output"][0]["content"][0]["text"]
 
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🤖 أهلاً بك في UNKNOWN WORLD AI!\n\n"
         "أنا مساعدك الذكي لصناعة المحتوى والأفكار والسكريبتات والترجمة.\n\n"
         "اكتب لي أي فكرة وسأساعدك."
     )
+
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
@@ -49,6 +52,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "أو اكتب طلبك مباشرة."
     )
 
+
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         await update.message.chat.send_action("typing")
@@ -59,6 +63,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "حدث خطأ مؤقتًا. حاول مرة أخرى بعد قليل."
         )
 
+
 def main():
     app = Application.builder().token(TELEGRAM_TOKEN).build()
 
@@ -68,9 +73,12 @@ def main():
     app.add_handler(CommandHandler("script", message_handler))
     app.add_handler(CommandHandler("translate", message_handler))
     app.add_handler(CommandHandler("ideas", message_handler))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler))
+    app.add_handler(
+        MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler)
+    )
 
     app.run_polling()
+
 
 if __name__ == "__main__":
     main()
