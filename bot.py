@@ -16,6 +16,7 @@ from telegram.ext import (
 from config import TELEGRAM_TOKEN, PORT
 from handlers.start import start
 from handlers.chat import chat
+from handlers.earning import earning
 from keyboards import main_menu, back_button
 
 
@@ -76,6 +77,9 @@ async def button_handler(
             "اكتب سؤالك وسأساعدك.",
             reply_markup=back_button(),
         )
+
+    elif query.data == "earn":
+        await earning(update, context)
 
     elif query.data == "about":
         await query.edit_message_text(
@@ -150,6 +154,7 @@ async def run_bot():
 
     await application.initialize()
     await application.start()
+
     await application.updater.start_polling(
         drop_pending_updates=True
     )
