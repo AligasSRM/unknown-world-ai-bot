@@ -84,11 +84,18 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         logger.info("User message received: %s", user_text)
 
-        response = await client.responses.create(
-            model="gpt-5.6-luna",
-            input=user_text,
-        )
-
+        
+response = await client.responses.create(
+    model="gpt-5.6-luna",
+    instructions=(
+        "You are UNKNOWN WORLD AI. "
+        "Always reply in the same language as the user's message. "
+        "If the user writes Arabic, reply in Arabic. "
+        "If the user writes English, reply in English. "
+        "Keep answers clear, helpful, and professional."
+    ),
+    input=user_text,
+)
         answer = response.output_text
 
         if not answer:
