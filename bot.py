@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 
 # =========================
-# FLASK WEB SERVER
+# WEB SERVER
 # =========================
 
 app = Flask(__name__)
@@ -64,6 +64,7 @@ async def button_handler(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
 ):
+
     query = update.callback_query
 
     if not query:
@@ -71,6 +72,7 @@ async def button_handler(
 
     await query.answer()
 
+    # AI ASSISTANT
     if query.data == "ai":
         await query.edit_message_text(
             "🤖 AI Assistant\n\n"
@@ -78,17 +80,35 @@ async def button_handler(
             reply_markup=back_button(),
         )
 
+    # LEARN LANGUAGES
+    elif query.data == "languages":
+        await query.edit_message_text(
+            "🎓 Learn Languages\n\n"
+            "اختر اللغة التي تريد تعلمها:\n\n"
+            "🇬🇧 English\n"
+            "🇩🇪 German\n"
+            "🇸🇪 Swedish\n"
+            "🇹🇭 Thai\n"
+            "🇨🇳 Chinese\n"
+            "🇪🇸 Spanish\n\n"
+            "📚 الدروس سيتم تطويرها قريبًا.",
+            reply_markup=back_button(),
+        )
+
+    # LEARN & EARN
     elif query.data == "earn":
         await earning(update, context)
 
+    # ABOUT
     elif query.data == "about":
         await query.edit_message_text(
             "ℹ️ UNKNOWN WORLD AI\n\n"
-            "Your AI Super Assistant.\n"
+            "Your AI Super Assistant.\n\n"
             "Powered by artificial intelligence.",
             reply_markup=back_button(),
         )
 
+    # HELP
     elif query.data == "help":
         await query.edit_message_text(
             "❓ Help\n\n"
@@ -97,6 +117,7 @@ async def button_handler(
             reply_markup=back_button(),
         )
 
+    # BACK TO MAIN MENU
     elif query.data == "main_menu":
         await query.edit_message_text(
             "🌎 UNKNOWN WORLD AI\n\n"
@@ -104,6 +125,7 @@ async def button_handler(
             reply_markup=main_menu(),
         )
 
+    # OTHER SERVICES
     else:
         await query.edit_message_text(
             "🚧 هذه الخدمة قيد التطوير حاليًا.\n\n"
@@ -117,6 +139,7 @@ async def button_handler(
 # =========================
 
 async def run_bot():
+
     if not TELEGRAM_TOKEN:
         raise RuntimeError(
             "TELEGRAM_TOKEN is not configured."
@@ -132,17 +155,17 @@ async def run_bot():
         .build()
     )
 
-    # /start
+    # START
     application.add_handler(
         CommandHandler("start", start)
     )
 
-    # Buttons
+    # BUTTONS
     application.add_handler(
         CallbackQueryHandler(button_handler)
     )
 
-    # Normal text messages
+    # NORMAL TEXT
     application.add_handler(
         MessageHandler(
             filters.TEXT & ~filters.COMMAND,
@@ -150,7 +173,9 @@ async def run_bot():
         )
     )
 
-    logger.info("Starting UNKNOWN WORLD AI BOT...")
+    logger.info(
+        "Starting UNKNOWN WORLD AI BOT..."
+    )
 
     await application.initialize()
     await application.start()
@@ -159,7 +184,9 @@ async def run_bot():
         drop_pending_updates=True
     )
 
-    logger.info("Telegram bot is running")
+    logger.info(
+        "Telegram bot is running"
+    )
 
     while True:
         await asyncio.sleep(3600)
@@ -170,6 +197,7 @@ async def run_bot():
 # =========================
 
 def main():
+
     web_thread = threading.Thread(
         target=run_web,
         daemon=True,
