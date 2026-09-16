@@ -1,6 +1,8 @@
 import io
 import logging
 
+from gtts import gTTS
+
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
@@ -9,33 +11,39 @@ logger = logging.getLogger(__name__)
 
 # =========================================================
 # UNKNOWN WORLD AI
-# FULL LANGUAGE LEARNING SYSTEM
+# FULL LANGUAGE LEARNING SYSTEM + VOICE
 # =========================================================
 
 LANGUAGES = {
     "english": {
         "name": "🇬🇧 English",
         "native": "English",
+        "tts": "en",
     },
     "german": {
         "name": "🇩🇪 German",
         "native": "Deutsch",
+        "tts": "de",
     },
     "swedish": {
         "name": "🇸🇪 Swedish",
         "native": "Svenska",
+        "tts": "sv",
     },
     "thai": {
         "name": "🇹🇭 Thai",
         "native": "ภาษาไทย",
+        "tts": "th",
     },
     "chinese": {
         "name": "🇨🇳 Chinese",
         "native": "中文",
+        "tts": "zh-CN",
     },
     "spanish": {
         "name": "🇪🇸 Spanish",
         "native": "Español",
+        "tts": "es",
     },
 }
 
@@ -940,7 +948,7 @@ LESSONS = {
                 "options": [
                     "良好的沟通。",
                     "昨天是蓝色。",
-                    "食物是沟通。"
+                    "食物是沟通."
                 ],
                 "answer": "良好的沟通。",
             },
@@ -1115,6 +1123,7 @@ LESSONS = {
 # =========================================================
 
 def get_progress(context, language):
+
     if "language_progress" not in context.user_data:
         context.user_data["language_progress"] = {}
 
@@ -1132,8 +1141,65 @@ def get_progress(context, language):
 
 
 def add_points(context, language, amount):
-    progress = get_progress(context, language)
+
+    progress = get_progress(
+        context,
+        language,
+    )
+
     progress["points"] += amount
+
+
+# =========================================================
+# VOICE / TTS
+# =========================================================
+
+async def send_voice(
+    update: Update,
+    language: str,
+    text: str,
+):
+
+    if not update.effective_chat:
+        return
+
+    language_info = LANGUAGES.get(language)
+
+    if not language_info:
+        return
+
+    try:
+
+        audio = io.BytesIO()
+
+        tts = gTTS(
+            text=text,
+            lang=language_info["tts"],
+            slow=False,
+        )
+
+        tts.write_to_fp(audio)
+
+        audio.seek(0)
+
+        await update.effective_chat.send_audio(
+            audio=audio,
+            title=f"{language_info['native']} pronunciation",
+            performer="UNKNOWN WORLD AI",
+        )
+
+    except Exception as error:
+
+        logger.exception(
+            "TTS error: %s",
+            error,
+        )
+
+        if update.effective_message:
+            await update.effective_message.reply_text(
+                "⚠️ تعذر إنشاء الصوت حالياً.\n"
+                "النطق المكتوب ما زال متاحاً."
+            )
 
 
 # =========================================================
@@ -1141,7 +1207,9 @@ def add_points(context, language, amount):
 # =========================================================
 
 def language_menu():
+
     keyboard = [
+
         [
             InlineKeyboardButton(
                 "🇬🇧 English",
@@ -1152,6 +1220,7 @@ def language_menu():
                 callback_data="lang_german"
             ),
         ],
+
         [
             InlineKeyboardButton(
                 "🇸🇪 Swedish",
@@ -1162,6 +1231,7 @@ def language_menu():
                 callback_data="lang_thai"
             ),
         ],
+
         [
             InlineKeyboardButton(
                 "🇨🇳 Chinese",
@@ -1172,6 +1242,7 @@ def language_menu():
                 callback_data="lang_spanish"
             ),
         ],
+
         [
             InlineKeyboardButton(
                 "🔙 Back",
@@ -1188,33 +1259,37 @@ def language_menu():
 # =========================================================
 
 def level_menu(language):
-    name = LANGUAGES[language]["name"]
 
     keyboard = [
+
         [
             InlineKeyboardButton(
                 "🟢 Beginner",
                 callback_data=f"lang_{language}_level_beginner"
             )
         ],
+
         [
             InlineKeyboardButton(
                 "🟡 Intermediate",
                 callback_data=f"lang_{language}_level_intermediate"
             )
         ],
+
         [
             InlineKeyboardButton(
                 "🔴 Advanced",
                 callback_data=f"lang_{language}_level_advanced"
             )
         ],
+
         [
             InlineKeyboardButton(
                 "📊 My Progress",
                 callback_data=f"lang_{language}_progress"
             )
         ],
+
         [
             InlineKeyboardButton(
                 "🔙 Languages",
@@ -1227,45 +1302,65 @@ def level_menu(language):
 
 
 # =========================================================
-# LESSON MENU
+# LESSON KEYBOARD
 # =========================================================
 
-def lesson_keyboard(language, level, number, total):
+def lesson_keyboard(
+    language,
+    level,
+    number,
+    total,
+):
 
-    buttons = []
+    buttons = [
 
-    buttons.append([
-        InlineKeyboardButton(
-            "🧠 Quiz",
-            callback_data=f"lang_{language}_quiz_{level}_{number}"
-        ),
-        InlineKeyboardButton(
-            "🔊 Pronunciation",
-            callback_data=f"lang_{language}_pronounce_{level}_{number}"
-        ),
-    ])
+        [
+            InlineKeyboardButton(
+                "🧠 Quiz",
+                callback_data=(
+                    f"lang_{language}_quiz_{level}_{number}"
+                ),
+            ),
+
+            InlineKeyboardButton(
+                "🔊 Pronunciation",
+                callback_data=(
+                    f"lang_{language}_pronounce_{level}_{number}"
+                ),
+            ),
+        ],
+    ]
 
     if number < total:
-        buttons.append([
+
+        buttons.append(
+            [
+                InlineKeyboardButton(
+                    "➡️ Next Lesson",
+                    callback_data=(
+                        f"lang_{language}_next_{level}_{number}"
+                    ),
+                )
+            ]
+        )
+
+    buttons.append(
+        [
             InlineKeyboardButton(
-                "➡️ Next Lesson",
-                callback_data=f"lang_{language}_next_{level}_{number}"
+                "📊 Progress",
+                callback_data=f"lang_{language}_progress"
             )
-        ])
+        ]
+    )
 
-    buttons.append([
-        InlineKeyboardButton(
-            "📊 Progress",
-            callback_data=f"lang_{language}_progress"
-        )
-    ])
-
-    buttons.append([
-        InlineKeyboardButton(
-            "🔙 Levels",
-            callback_data=f"lang_{language}"
-        )
-    ])
+    buttons.append(
+        [
+            InlineKeyboardButton(
+                "🔙 Levels",
+                callback_data=f"lang_{language}"
+            )
+        ]
+    )
 
     return InlineKeyboardMarkup(buttons)
 
@@ -1292,7 +1387,11 @@ async def show_lesson(
 
     lesson = lessons[number - 1]
 
-    progress = get_progress(context, language)
+    progress = get_progress(
+        context,
+        language,
+    )
+
     progress["last_level"] = level
 
     text = (
@@ -1318,6 +1417,7 @@ async def show_lesson(
     )
 
     if update.callback_query:
+
         await update.callback_query.edit_message_text(
             text,
             reply_markup=lesson_keyboard(
@@ -1329,6 +1429,7 @@ async def show_lesson(
         )
 
     elif update.effective_message:
+
         await update.effective_message.reply_text(
             text,
             reply_markup=lesson_keyboard(
@@ -1356,7 +1457,7 @@ async def languages(
         "📝 Vocabulary\n"
         "💬 Sentences\n"
         "📖 Grammar\n"
-        "🔊 Pronunciation\n"
+        "🔊 Voice Pronunciation\n"
         "🧠 Quizzes\n"
         "🏆 Points\n"
         "📊 Progress\n"
@@ -1365,12 +1466,14 @@ async def languages(
     )
 
     if update.callback_query:
+
         await update.callback_query.edit_message_text(
             text,
             reply_markup=language_menu(),
         )
 
     elif update.effective_message:
+
         await update.effective_message.reply_text(
             text,
             reply_markup=language_menu(),
@@ -1394,31 +1497,40 @@ async def show_level(
         f"{LANGUAGES[language]['name']}\n\n"
         f"{LEVELS[level]}\n\n"
         f"📚 Available lessons: {len(lessons)}\n\n"
-        "Choose a lesson by starting from Lesson 1."
+        "Choose a lesson:"
     )
 
     keyboard = []
 
-    for index, lesson in enumerate(lessons, start=1):
-        keyboard.append([
-            InlineKeyboardButton(
-                f"📘 {index}. {lesson['title']}",
-                callback_data=f"lang_{language}_lesson_{level}_{index}"
-            )
-        ])
+    for index, lesson in enumerate(
+        lessons,
+        start=1,
+    ):
 
-    keyboard.append([
-        InlineKeyboardButton(
-            "🔙 Levels",
-            callback_data=f"lang_{language}"
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    f"📘 {index}. {lesson['title']}",
+                    callback_data=(
+                        f"lang_{language}_lesson_"
+                        f"{level}_{index}"
+                    ),
+                )
+            ]
         )
-    ])
 
-    markup = InlineKeyboardMarkup(keyboard)
+    keyboard.append(
+        [
+            InlineKeyboardButton(
+                "🔙 Levels",
+                callback_data=f"lang_{language}"
+            )
+        ]
+    )
 
     await update.callback_query.edit_message_text(
         text,
-        reply_markup=markup,
+        reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
 
@@ -1443,25 +1555,37 @@ async def show_quiz(
 
     keyboard = []
 
-    for index, option in enumerate(lesson["options"]):
-        letter = chr(97 + index)
+    for index, option in enumerate(
+        lesson["options"]
+    ):
 
-        keyboard.append([
+        letter = chr(
+            97 + index
+        )
+
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    f"{letter.upper()}. {option}",
+                    callback_data=(
+                        f"lang_{language}_answer_"
+                        f"{letter}_{level}_{number}"
+                    ),
+                )
+            ]
+        )
+
+    keyboard.append(
+        [
             InlineKeyboardButton(
-                f"{letter.upper()}. {option}",
+                "🔙 Back to Lesson",
                 callback_data=(
-                    f"lang_{language}_answer_"
-                    f"{letter}_{level}_{number}"
+                    f"lang_{language}_lesson_"
+                    f"{level}_{number}"
                 ),
             )
-        ])
-
-    keyboard.append([
-        InlineKeyboardButton(
-            "🔙 Back to Lesson",
-            callback_data=f"lang_{language}_lesson_{level}_{number}"
-        )
-    ])
+        ]
+    )
 
     text = (
         f"🧠 QUIZ\n\n"
@@ -1497,11 +1621,17 @@ async def answer_quiz(
 
     lesson = lessons[number - 1]
 
-    progress = get_progress(context, language)
+    progress = get_progress(
+        context,
+        language,
+    )
 
     option_index = ord(answer) - 97
 
-    if option_index < 0 or option_index >= len(lesson["options"]):
+    if (
+        option_index < 0
+        or option_index >= len(lesson["options"])
+    ):
         return
 
     selected = lesson["options"][option_index]
@@ -1518,11 +1648,14 @@ async def answer_quiz(
         )
 
         if number not in progress["completed"]:
-            progress["completed"].append(number)
+
+            progress["completed"].append(
+                number
+            )
 
         text = (
             "✅ CORRECT!\n\n"
-            f"🎉 Excellent!\n\n"
+            "🎉 Excellent!\n\n"
             f"Answer:\n"
             f"{lesson['answer']}\n\n"
             "🏆 +10 points\n"
@@ -1544,28 +1677,43 @@ async def answer_quiz(
         )
 
     keyboard = [
+
         [
             InlineKeyboardButton(
                 "📘 Review Lesson",
-                callback_data=f"lang_{language}_lesson_{level}_{number}"
+                callback_data=(
+                    f"lang_{language}_lesson_"
+                    f"{level}_{number}"
+                ),
             )
         ],
+
         [
             InlineKeyboardButton(
                 "🧠 Try Quiz Again",
-                callback_data=f"lang_{language}_quiz_{level}_{number}"
+                callback_data=(
+                    f"lang_{language}_quiz_"
+                    f"{level}_{number}"
+                ),
             )
         ],
+
         [
             InlineKeyboardButton(
                 "➡️ Next Lesson",
-                callback_data=f"lang_{language}_next_{level}_{number}"
+                callback_data=(
+                    f"lang_{language}_next_"
+                    f"{level}_{number}"
+                ),
             )
         ],
+
         [
             InlineKeyboardButton(
                 "📊 Progress",
-                callback_data=f"lang_{language}_progress"
+                callback_data=(
+                    f"lang_{language}_progress"
+                ),
             )
         ],
     ]
@@ -1577,7 +1725,7 @@ async def answer_quiz(
 
 
 # =========================================================
-# PRONUNCIATION
+# PRONUNCIATION + REAL AUDIO
 # =========================================================
 
 async def show_pronunciation(
@@ -1604,15 +1752,18 @@ async def show_pronunciation(
         f"{lesson['pronunciation']}\n\n"
         f"💬 Example:\n"
         f"{lesson['sentence']}\n\n"
-        "💡 Tip:\n"
-        "Say the word slowly first, then repeat it at normal speed."
+        "🎧 Sending pronunciation audio..."
     )
 
     keyboard = [
+
         [
             InlineKeyboardButton(
                 "📘 Back to Lesson",
-                callback_data=f"lang_{language}_lesson_{level}_{number}"
+                callback_data=(
+                    f"lang_{language}_lesson_"
+                    f"{level}_{number}"
+                ),
             )
         ]
     ]
@@ -1620,6 +1771,20 @@ async def show_pronunciation(
     await update.callback_query.edit_message_text(
         text,
         reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
+    # Send the word pronunciation.
+    await send_voice(
+        update,
+        language,
+        lesson["word"],
+    )
+
+    # Send the complete sentence pronunciation.
+    await send_voice(
+        update,
+        language,
+        lesson["sentence"],
     )
 
 
@@ -1633,9 +1798,15 @@ async def show_progress(
     language,
 ):
 
-    progress = get_progress(context, language)
+    progress = get_progress(
+        context,
+        language,
+    )
 
-    total_completed = len(progress["completed"])
+    total_completed = len(
+        progress["completed"]
+    )
+
     points = progress["points"]
     correct = progress["correct"]
     wrong = progress["wrong"]
@@ -1644,10 +1815,13 @@ async def show_progress(
     total_answers = correct + wrong
 
     if total_answers > 0:
+
         accuracy = round(
             correct / total_answers * 100
         )
+
     else:
+
         accuracy = 0
 
     text = (
@@ -1664,12 +1838,14 @@ async def show_progress(
     )
 
     keyboard = [
+
         [
             InlineKeyboardButton(
                 "📚 Continue Learning",
                 callback_data=f"lang_{language}"
             )
         ],
+
         [
             InlineKeyboardButton(
                 "🔙 Languages",
@@ -1711,12 +1887,16 @@ async def next_lesson(
         )
 
         keyboard = [
+
             [
                 InlineKeyboardButton(
                     "📊 My Progress",
-                    callback_data=f"lang_{language}_progress"
+                    callback_data=(
+                        f"lang_{language}_progress"
+                    ),
                 )
             ],
+
             [
                 InlineKeyboardButton(
                     "🔙 Levels",
@@ -1742,6 +1922,27 @@ async def next_lesson(
 
 
 # =========================================================
+# TEXT PRACTICE
+# =========================================================
+
+async def language_text_practice(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+
+    if not update.effective_message:
+        return
+
+    text = update.effective_message.text
+
+    if not text:
+        return
+
+    # Normal text messages continue to the main chat handler.
+    return
+
+
+# =========================================================
 # CALLBACK ROUTER
 # =========================================================
 
@@ -1763,23 +1964,26 @@ async def language_lesson(
         pass
 
     # -----------------------------------------------------
-    # Language home
+    # LANGUAGE HOME
     # -----------------------------------------------------
 
     if data == "languages":
+
         await languages(
             update,
             context,
         )
+
         return
 
     # -----------------------------------------------------
-    # Language selection
+    # LANGUAGE CALLBACKS
     # -----------------------------------------------------
 
     if data.startswith("lang_"):
 
         value = data[5:]
+
         parts = value.split("_")
 
         if not parts:
@@ -1791,6 +1995,7 @@ async def language_lesson(
             return
 
         # -------------------------------------------------
+        # LANGUAGE HOME
         # lang_english
         # -------------------------------------------------
 
@@ -1841,8 +2046,13 @@ async def language_lesson(
             level = parts[2]
 
             try:
-                number = int(parts[3])
+
+                number = int(
+                    parts[3]
+                )
+
             except ValueError:
+
                 return
 
             if level not in LESSONS[language]:
@@ -1870,8 +2080,13 @@ async def language_lesson(
             level = parts[2]
 
             try:
-                number = int(parts[3])
+
+                number = int(
+                    parts[3]
+                )
+
             except ValueError:
+
                 return
 
             if level not in LESSONS[language]:
@@ -1897,11 +2112,17 @@ async def language_lesson(
                 return
 
             answer = parts[2]
+
             level = parts[3]
 
             try:
-                number = int(parts[4])
+
+                number = int(
+                    parts[4]
+                )
+
             except ValueError:
+
                 return
 
             if level not in LESSONS[language]:
@@ -1930,8 +2151,13 @@ async def language_lesson(
             level = parts[2]
 
             try:
-                number = int(parts[3])
+
+                number = int(
+                    parts[3]
+                )
+
             except ValueError:
+
                 return
 
             if level not in LESSONS[language]:
@@ -1973,8 +2199,13 @@ async def language_lesson(
             level = parts[2]
 
             try:
-                number = int(parts[3])
+
+                number = int(
+                    parts[3]
+                )
+
             except ValueError:
+
                 return
 
             if level not in LESSONS[language]:
@@ -1992,49 +2223,20 @@ async def language_lesson(
 
 
 # =========================================================
-# TEXT COMMANDS / FREE PRACTICE
-# =========================================================
-
-async def language_text_practice(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-):
-
-    if not update.effective_message:
-        return
-
-    text = update.effective_message.text
-
-    if not text:
-        return
-
-    # This function is intentionally simple for now.
-    # The main bot chat handler can continue handling
-    # normal text messages.
-
-
-# =========================================================
 # OPTIONAL AUDIO HELPER
 # =========================================================
 
 async def send_pronunciation_audio(
     update: Update,
+    language: str,
     text: str,
 ):
 
-    """
-    Placeholder for future free TTS integration.
-
-    The current system provides written pronunciation.
-    A real audio/TTS provider can be connected here later
-    without changing the lesson database.
-    """
-
-    if not update.effective_message:
-        return
-
-    # Audio generation will be connected later.
-    return
+    await send_voice(
+        update,
+        language,
+        text,
+    )
 
 
 # =========================================================
@@ -2046,6 +2248,7 @@ __all__ = [
     "language_lesson",
     "language_text_practice",
     "send_pronunciation_audio",
+    "send_voice",
     "LANGUAGES",
     "LEVELS",
     "LESSONS",
